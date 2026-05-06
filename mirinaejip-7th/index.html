@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>미리내집 비교 지도 — 제7차 장기전세주택Ⅱ</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:#eeecea;
+  --surf:#ffffff;
+  --surf2:#f5f4f0;
+  --surf3:#eeece7;
+  --bd:#dedad2;
+  --bd2:#c8c4b8;
+  --t1:#141210;
+  --t2:#524f46;
+  --tm:#9a9790;
+  --accent:#2563eb;
+  --sh:0 2px 16px rgba(0,0,0,.08);
+  --sh2:0 8px 40px rgba(0,0,0,.14);
+  --c1:#166534; --c2:#15803d; --c3:#b45309; --c4:#c2410c; --c5:#991b1b;
+  --c1l:#dcfce7; --c2l:#d1fae5; --c3l:#fef3c7; --c4l:#ffedd5; --c5l:#fee2e2;
+  --sidebar:380px;
+  --header:56px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+html,body{
+  height:100%;width:100%;
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--bg);color:var(--t1);
+  overflow:hidden;display:flex;flex-direction:column;
+}
+
+/* ══ HEADER ══ */
+header{
+  background:var(--surf);
+  border-bottom:1.5px solid var(--bd);
+  height:var(--header);
+  padding:0 20px;
+  display:flex;align-items:center;gap:16px;
+  flex-shrink:0;z-index:1000;position:relative;
+  box-shadow:0 1px 8px rgba(0,0,0,.06);
+}
+
+.hd-brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hd-brand .logo{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(59,130,246,.35);
+}
+.hd-brand h1{font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.hd-brand small{font-size:10px;color:var(--tm);display:block;margin-top:1px}
+
+.hd-divider{width:1px;height:28px;background:var(--bd);flex-shrink:0}
+
+/* 이자율 컨트롤 */
+.rate-box{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surf2);border:1.5px solid var(--bd);
+  border-radius:8px;padding:6px 12px;flex-shrink:0;
+}
+.rate-box label{font-size:11px;font-weight:500;color:var(--t2);white-space:nowrap}
+#rs{
+  width:90px;height:4px;cursor:pointer;
+  accent-color:var(--c3);
+  appearance:none;-webkit-appearance:none;
+  background:var(--bd);border-radius:2px;outline:none;
+}
+#rs::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--c3);
+  box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;
+  border:2px solid #fff;
+}
+#rn{
+  width:44px;border:1.5px solid var(--bd);border-radius:6px;
+  padding:3px 5px;font-size:13px;
+  font-family:'DM Mono',monospace;font-weight:500;
+  text-align:right;background:var(--surf);color:var(--t1);
+  -moz-appearance:textfield;transition:border-color .15s;
+}
+#rn:focus{outline:none;border-color:var(--c3)}
+#rn::-webkit-inner-spin-button{-webkit-appearance:none}
+.rate-box .unit{font-size:12px;font-weight:500;color:var(--t2)}
+
+/* 타일 선택 */
+.tile-wrap{
+  display:flex;align-items:center;gap:5px;
+  background:var(--surf2);border:1.5px solid var(--bd);
+  border-radius:8px;padding:5px 8px;flex-shrink:0;
+}
+.tile-wrap .tw-label{font-size:10px;color:var(--tm);padding-right:4px;white-space:nowrap}
+.tbtn{
+  display:flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:500;color:var(--t2);
+  background:transparent;border:1.5px solid transparent;
+  border-radius:6px;padding:4px 9px;cursor:pointer;
+  white-space:nowrap;transition:all .13s;font-family:inherit;
+  line-height:1;
+}
+.tbtn .ti{font-size:13px;line-height:1}
+.tbtn:hover{background:var(--bd);color:var(--t1)}
+.tbtn.active{
+  background:var(--t1);color:#fff;
+  border-color:var(--t1);
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+
+/* 범례 */
+.legend{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t2);white-space:nowrap}
+.leg-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+  border:2px solid rgba(255,255,255,.8);
+  box-shadow:0 1px 4px rgba(0,0,0,.22);
+}
+
+/* ══ LAYOUT ══ */
+.layout{
+  display:grid;
+  grid-template-columns:1fr var(--sidebar);
+  flex:1;min-height:0;
+}
+
+/* ══ MAP ══ */
+#map{width:100%;height:100%;z-index:1}
+
+/* ── 커스텀 마커 (집 실루엣) ── */
+.mk-wrap{
+  position:relative;
+  width:32px;height:32px;
+  cursor:pointer;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));
+  transition:filter .15s, transform .15s cubic-bezier(.34,1.56,.64,1);
+  transform-origin:bottom center;
+}
+.mk-wrap:hover{
+  transform:scale(1.3) translateY(-3px);
+  filter:drop-shadow(0 5px 8px rgba(0,0,0,.4));
+}
+.mk-wrap.active{
+  transform:scale(1.4) translateY(-4px);
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));
+  animation:house-bounce .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes house-bounce{
+  0%  {transform:scale(1)   translateY(0)}
+  60% {transform:scale(1.5) translateY(-6px)}
+  100%{transform:scale(1.4) translateY(-4px)}
+}
+.mk-wrap.active .mk-house svg{
+  animation:house-pulse 2s ease-in-out infinite;
+}
+@keyframes house-pulse{
+  0%,100%{filter:drop-shadow(0 0 0px rgba(255,255,255,0))}
+  50%{filter:drop-shadow(0 0 5px rgba(255,255,255,.6))}
+}
+
+/* ── 호버 툴팁 (지도 위) ── */
+.map-tooltip{
+  position:absolute;z-index:900;
+  background:rgba(20,18,16,.88);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  color:#fff;border-radius:10px;
+  padding:10px 13px;
+  pointer-events:none;
+  opacity:0;transform:translateY(4px) scale(.97);
+  transition:opacity .15s,transform .15s;
+  min-width:180px;max-width:250px;
+  box-shadow:0 8px 28px rgba(0,0,0,.28);
+  border:1px solid rgba(255,255,255,.1);
+  font-size:11.5px;line-height:1.65;
+}
+.map-tooltip.show{opacity:1;transform:translateY(0) scale(1)}
+.tt-name{font-size:13px;font-weight:700;margin-bottom:5px;line-height:1.3}
+.tt-row{display:flex;justify-content:space-between;gap:8px;color:rgba(255,255,255,.72)}
+.tt-row .tl{color:rgba(255,255,255,.45);flex-shrink:0}
+.tt-row .tv{font-weight:500;color:#fff}
+.tt-badge{
+  display:inline-block;font-size:9px;font-weight:600;
+  padding:2px 6px;border-radius:4px;margin-left:5px;
+  vertical-align:middle;
+}
+
+/* ── 클릭 팝업 (Leaflet) ── */
+.leaflet-popup-content-wrapper{
+  border-radius:12px!important;
+  box-shadow:0 8px 32px rgba(0,0,0,.18)!important;
+  padding:0!important;
+  border:1.5px solid var(--bd);
+  font-family:'Noto Sans KR',sans-serif!important;
+  overflow:hidden;
+}
+.leaflet-popup-content{margin:0!important;width:auto!important}
+.leaflet-popup-tip-container{margin-top:-1px}
+
+.pu{min-width:220px;max-width:280px}
+.pu-head{
+  padding:13px 16px 10px;
+  border-bottom:1px solid var(--bd);
+}
+.pu-name{font-size:14px;font-weight:700;line-height:1.3;margin-bottom:3px}
+.pu-sub{font-size:11px;color:var(--tm);display:flex;align-items:center;gap:6px}
+.pu-tag{
+  font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;
+}
+.pu-body{padding:10px 16px 13px;display:flex;flex-direction:column;gap:6px}
+.pu-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px}
+.pu-row .pl{color:var(--tm);flex-shrink:0}
+.pu-row .pv{font-weight:600;color:var(--t1);font-family:'DM Mono',monospace;font-size:13px}
+.pu-row .pv.interest{color:var(--c4)}
+.pu-sizes{font-size:10px;color:var(--tm);margin-top:2px;border-top:1px solid var(--bd);padding-top:8px}
+
+/* ══ SIDEBAR ══ */
+.sb{
+  background:var(--surf);
+  border-left:1.5px solid var(--bd);
+  display:flex;flex-direction:column;
+  min-height:0;z-index:2;
+}
+
+/* 공고문 섹션 */
+.notice-section{
+  padding:14px 16px;
+  border-bottom:1.5px solid var(--bd);
+  background:linear-gradient(135deg,#eff6ff 0%,#f0f9ff 100%);
+  flex-shrink:0;
+}
+.notice-label{
+  font-size:9.5px;font-weight:600;color:#1d4ed8;
+  letter-spacing:.5px;text-transform:uppercase;
+  margin-bottom:8px;display:flex;align-items:center;gap:5px;
+}
+.notice-label::before{content:'';width:3px;height:12px;background:#1d4ed8;border-radius:2px;display:inline-block}
+.notice-link{
+  display:flex;align-items:center;gap:10px;
+  background:#fff;border:1.5px solid #bfdbfe;
+  border-radius:9px;padding:10px 12px;
+  text-decoration:none;color:var(--t1);
+  transition:all .15s;
+  box-shadow:0 1px 6px rgba(37,99,235,.08);
+}
+.notice-link:hover{
+  border-color:#3b82f6;
+  background:#f0f9ff;
+  box-shadow:0 3px 12px rgba(37,99,235,.15);
+  transform:translateY(-1px);
+}
+.notice-icon{
+  width:36px;height:36px;border-radius:8px;
+  background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(59,130,246,.3);
+}
+.notice-text{flex:1;min-width:0}
+.notice-title{font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notice-meta{font-size:10px;color:var(--tm)}
+.notice-arrow{font-size:14px;color:#3b82f6;flex-shrink:0}
+
+/* 단지 목록 헤더 */
+.sb-head{
+  padding:13px 16px 11px;
+  border-bottom:1px solid var(--bd);
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+}
+.sb-head h2{font-size:12px;font-weight:600;color:var(--t2)}
+.sb-count{font-size:10px;color:var(--tm);background:var(--surf2);padding:2px 8px;border-radius:10px;border:1px solid var(--bd)}
+
+/* 카드 목록 */
+.card-list{
+  flex:1;overflow-y:auto;
+  padding:10px;
+  display:flex;flex-direction:column;gap:7px;
+}
+.card-list::-webkit-scrollbar{width:4px}
+.card-list::-webkit-scrollbar-track{background:transparent}
+.card-list::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+
+/* ── 카드 ── */
+.card{
+  background:var(--surf2);
+  border:1.5px solid var(--bd);
+  border-left:4px solid var(--cc, var(--bd2));
+  border-radius:10px;
+  padding:12px 13px 11px 12px;
+  cursor:pointer;
+  transition:background .13s, box-shadow .13s, transform .13s;
+  position:relative;
+}
+.card:hover{
+  background:#fff;
+  border-color:var(--bd2);
+  border-left-color:var(--cc, var(--bd2));
+  box-shadow:var(--sh);
+  transform:translateX(2px);
+}
+.card.active{
+  background:#fff;
+  border-color:var(--cc, var(--bd2));
+  border-left-color:var(--cc, var(--bd2));
+  box-shadow:0 4px 20px rgba(0,0,0,.12);
+  transform:translateX(3px);
+}
+
+/* 헤더 행 */
+.card-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:8px;
+  margin-bottom:9px;
+}
+.card-name{font-size:12.5px;font-weight:700;line-height:1.3;color:var(--t1)}
+.card-gu{font-size:9.5px;color:var(--tm);margin-top:2px}
+.card-badge{
+  font-size:8.5px;font-weight:600;
+  padding:2px 7px;border-radius:5px;
+  flex-shrink:0;margin-top:1px;
+  white-space:nowrap;
+}
+
+/* 금액 블록 */
+.card-amounts{
+  display:flex;
+  gap:7px;
+  margin-bottom:9px;
+}
+.amount-block{
+  flex:1;
+  min-width:0;
+  background:var(--surf3);
+  border-radius:7px;
+  padding:7px 9px;
+  border:1px solid var(--bd);
+}
+.amt-label{font-size:9px;color:var(--tm);margin-bottom:3px;font-weight:500}
+.amt-val{
+  font-size:12px;font-weight:700;
+  font-family:'DM Mono',monospace;
+  line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.amt-val.dep{color:var(--t1)}
+.amt-val.int{color:var(--cc, var(--t1))}
+
+/* 푸터 행 */
+.card-footer{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:6px;
+}
+.card-sizes{
+  font-size:9px;color:var(--t2);
+  line-height:1.5;
+  flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.card-movein{
+  font-size:9px;color:var(--tm);
+  background:var(--surf3);
+  padding:2px 7px;
+  border-radius:4px;
+  border:1px solid var(--bd);
+  white-space:nowrap;
+  flex-shrink:0;
+}
+
+/* ── 필터 패널 ── */
+.filter-panel{
+  padding:10px 12px 8px;
+  border-bottom:1.5px solid var(--bd);
+  display:flex;flex-direction:column;gap:8px;
+  flex-shrink:0;background:var(--surf2);
+}
+.filter-search-wrap{
+  position:relative;display:flex;align-items:center;
+}
+.filter-search-icon{
+  position:absolute;left:9px;font-size:12px;pointer-events:none;opacity:.5;
+}
+.filter-search{
+  width:100%;padding:6px 28px 6px 28px;
+  font-size:12px;font-family:inherit;
+  border:1.5px solid var(--bd);border-radius:7px;
+  background:var(--surf);color:var(--t1);
+  outline:none;transition:border-color .12s;
+}
+.filter-search:focus{border-color:var(--bd2)}
+.filter-search::placeholder{color:var(--tm)}
+.filter-search-clear{
+  position:absolute;right:7px;
+  background:none;border:none;cursor:pointer;
+  font-size:11px;color:var(--tm);padding:2px 5px;
+  border-radius:4px;transition:background .1s;line-height:1;
+}
+.filter-search-clear:hover{background:var(--bd)}
+.filter-row{
+  display:flex;align-items:center;gap:8px;
+}
+.filter-row-label{
+  font-size:10px;font-weight:600;color:var(--tm);
+  white-space:nowrap;width:46px;flex-shrink:0;letter-spacing:.2px;
+}
+.filter-chips{
+  display:flex;gap:4px;flex-wrap:wrap;flex:1;
+}
+.fchip{
+  font-size:10.5px;font-weight:500;font-family:inherit;
+  padding:3px 9px;border-radius:20px;cursor:pointer;
+  border:1.5px solid var(--bd);
+  background:var(--surf);color:var(--t2);
+  transition:all .12s;white-space:nowrap;line-height:1.4;
+}
+.fchip:hover{border-color:var(--bd2);background:var(--surf)}
+.fchip.active{background:var(--t1);color:#fff;border-color:var(--t1)}
+.filter-select{
+  flex:1;min-width:0;font-size:11px;font-family:inherit;
+  padding:5px 8px;border:1.5px solid var(--bd);
+  border-radius:7px;background:var(--surf);color:var(--t1);
+  outline:none;cursor:pointer;transition:border-color .12s;
+}
+.filter-select:focus{border-color:var(--bd2)}
+.filter-reset{
+  font-size:10.5px;font-family:inherit;font-weight:500;
+  padding:4px 10px;border-radius:6px;cursor:pointer;
+  border:1.5px solid var(--bd);
+  background:transparent;color:var(--t2);
+  white-space:nowrap;transition:all .12s;flex-shrink:0;
+}
+.filter-reset:hover{background:var(--bd);color:var(--t1)}
+.empty-state{
+  padding:36px 20px;text-align:center;
+  color:var(--tm);font-size:13px;line-height:2;
+}
+.empty-state .es-icon{font-size:30px;display:block;margin-bottom:6px}
+
+/* ══ 모바일 ══ */
+@media(max-width:860px){
+  :root{--sidebar:100%}
+  html,body{overflow:auto}
+  .layout{grid-template-columns:1fr;grid-template-rows:55vw auto}
+  .sb{max-height:75vh}
+  header{flex-wrap:wrap;height:auto;padding:10px 14px;gap:7px}
+  .legend{display:none}
+  .hd-divider{display:none}
+  .tile-wrap .tw-label{display:none}
+  #rs{width:64px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-brand">
+    <div class="logo">🏠</div>
+    <div>
+      <h1>미리내집 비교 지도</h1>
+      <small>제7차 장기전세주택Ⅱ · SH서울주택도시개발공사</small>
+    </div>
+  </div>
+
+  <div class="hd-divider"></div>
+
+  <div class="rate-box">
+    <label>연 이자율</label>
+    <input type="range" id="rs" min="1" max="10" step="0.1" value="5">
+    <input type="number" id="rn" min="0.1" max="30" step="0.1" value="5">
+    <span class="unit">%</span>
+  </div>
+
+  <div class="tile-wrap" id="tileGroup">
+    <span class="tw-label">지도</span>
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:var(--c1)"></div>~3억</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--c2)"></div>3~5억</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--c3)"></div>5~7억</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--c4)"></div>7~10억</div>
+    <div class="leg-item"><div class="leg-dot" style="background:var(--c5)"></div>10억+</div>
+  </div>
+</header>
+
+<div class="layout">
+  <div id="map"></div>
+
+  <div class="sb">
+    <!-- 공고문 링크 섹션 -->
+    <div class="notice-section">
+      <div class="notice-label">📋 모집 공고</div>
+      <a class="notice-link"
+         href="https://www.i-sh.co.kr/app/lay2/program/S48T1581C563/www/brd/m_247/view.do?multi_itm_seq=2&seq=303480"
+         target="_blank" rel="noopener noreferrer">
+        <div class="notice-icon">📄</div>
+        <div class="notice-text">
+          <div class="notice-title">제7차 장기전세주택Ⅱ(미리내집) 입주자 모집공고</div>
+          <div class="notice-meta">SH공사 공식 공고문 · 새 탭에서 열기</div>
+        </div>
+        <span class="notice-arrow">↗</span>
+      </a>
+    </div>
+
+    <!-- 단지 목록 -->
+    <div class="sb-head">
+      <h2>전체 단지 목록</h2>
+      <span class="sb-count" id="cnt">-</span>
+    </div>
+
+    <!-- 필터 / 정렬 패널 -->
+    <div class="filter-panel">
+      <!-- 검색 -->
+      <div class="filter-search-wrap">
+        <span class="filter-search-icon">🔍</span>
+        <input type="text" id="searchInput" class="filter-search" placeholder="단지명·자치구 검색...">
+        <button class="filter-search-clear" id="searchClear" style="display:none">✕</button>
+      </div>
+
+      <!-- 공급 유형 -->
+      <div class="filter-row">
+        <span class="filter-row-label">공급 유형</span>
+        <div class="filter-chips" id="typeFilter">
+          <button class="fchip active" data-val="all">전체</button>
+          <button class="fchip" data-val="신규">신규</button>
+          <button class="fchip" data-val="재공급">재공급</button>
+          <button class="fchip" data-val="매입">매입</button>
+        </div>
+      </div>
+
+      <!-- 보증금 범위 -->
+      <div class="filter-row">
+        <span class="filter-row-label">보증금</span>
+        <div class="filter-chips" id="priceFilter">
+          <button class="fchip active" data-val="all">전체</button>
+          <button class="fchip" data-val="0-3" style="color:var(--c1)">~3억</button>
+          <button class="fchip" data-val="3-5" style="color:var(--c2)">3~5억</button>
+          <button class="fchip" data-val="5-7" style="color:var(--c3)">5~7억</button>
+          <button class="fchip" data-val="7-10" style="color:var(--c4)">7~10억</button>
+          <button class="fchip" data-val="10-" style="color:var(--c5)">10억+</button>
+        </div>
+      </div>
+
+      <!-- 정렬 + 초기화 -->
+      <div class="filter-row">
+        <span class="filter-row-label">정렬</span>
+        <div style="display:flex;gap:6px;align-items:center;flex:1">
+          <select id="sortSelect" class="filter-select">
+            <option value="default">기본순</option>
+            <option value="dep-asc">보증금 낮은순</option>
+            <option value="dep-desc">보증금 높은순</option>
+            <option value="int-asc">월이자 낮은순</option>
+            <option value="int-desc">월이자 높은순</option>
+            <option value="gu">자치구순</option>
+            <option value="units-desc">세대수 많은순</option>
+          </select>
+          <button class="filter-reset" id="filterReset">초기화</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-list" id="cl"></div>
+  </div>
+</div>
+
+<!-- 호버 툴팁 -->
+<div class="map-tooltip" id="mapTip"></div>
+
+<script>
+/* ══════════════════════════════════
+   타일 정의
+══════════════════════════════════ */
+const TILES=[
+  {id:'voyager',  label:'보이저',    icon:'🧭',
+   url:'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+   attr:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+   sub:'abcd',maxZ:19},
+  {id:'osm',      label:'기본',      icon:'🗺️',
+   url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+   attr:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+   sub:'abc',maxZ:19},
+  {id:'light',    label:'라이트',    icon:'☀️',
+   url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+   attr:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+   sub:'abcd',maxZ:19},
+  {id:'dark',     label:'다크',      icon:'🌙',
+   url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+   attr:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+   sub:'abcd',maxZ:19},
+  {id:'satellite',label:'위성',      icon:'🛰️',
+   url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+   attr:'© <a href="https://www.esri.com/">Esri</a>',
+   sub:'abc',maxZ:18},
+  {id:'topo',     label:'지형',      icon:'⛰️',
+   url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+   attr:'© <a href="https://opentopomap.org">OpenTopoMap</a>',
+   sub:'abc',maxZ:17},
+];
+
+/* ══════════════════════════════════
+   색상 단계 (보증금 기준)
+══════════════════════════════════ */
+const STEPS=[
+  {max:3e8,  hex:'#166534', light:'#dcfce7'},
+  {max:5e8,  hex:'#15803d', light:'#d1fae5'},
+  {max:7e8,  hex:'#b45309', light:'#fef3c7'},
+  {max:10e8, hex:'#c2410c', light:'#ffedd5'},
+  {max:Infinity,hex:'#991b1b',light:'#fee2e2'},
+];
+const col=d=>STEPS.find(s=>d<s.max)||STEPS[4];
+
+/* ══════════════════════════════════
+   포맷
+══════════════════════════════════ */
+const f억=v=>{
+  const m=Math.round(v/1e4);
+  if(m>=1e4){const e=Math.floor(m/1e4),r=m%1e4;return r?`${e}억 ${r.toLocaleString()}만`:`${e}억`;}
+  return `${m.toLocaleString()}만`;
+};
+const fI=(d,r)=>`${Math.round(d*(r/100)/12/1e4).toLocaleString()}만원`;
+
+/* ══════════════════════════════════
+   이자율
+══════════════════════════════════ */
+let R=5;
+const rsEl=document.getElementById('rs'), rnEl=document.getElementById('rn');
+function setR(v){
+  R=Math.max(.1,Math.min(30,+v||5));
+  rsEl.value=Math.min(10,R); rnEl.value=R;
+  document.querySelectorAll('[data-d]').forEach(e=>e.textContent=fI(+e.dataset.d,R));
+}
+rsEl.addEventListener('input',e=>setR(e.target.value));
+rnEl.addEventListener('change',e=>setR(e.target.value));
+rnEl.addEventListener('input',e=>{if(e.target.value&&!isNaN(+e.target.value))setR(e.target.value);});
+
+/* ══════════════════════════════════
+   데이터
+══════════════════════════════════ */
+const H=[
+  {id:1,  n:"엘리프 미아역",              gu:"강북구",  t:"신규",  lat:37.6263,lng:127.0278,s:[{v:"49㎡",d:380640000,u:5},{v:"59㎡",d:493740000,u:9},{v:"74㎡",d:541320000,u:2},{v:"84㎡",d:606060000,u:1}],m:"2026.11"},
+  {id:2,  n:"힐스테이트 동작 시그니처",    gu:"동작구",  t:"신규",  lat:37.5129,lng:126.9425,s:[{v:"45㎡",d:469560000,u:66},{v:"50㎡",d:521820000,u:6},{v:"59㎡",d:593580000,u:19}],m:"2026.12"},
+  {id:3,  n:"동작 보라매역 프리센트",      gu:"동작구",  t:"신규",  lat:37.4998,lng:126.9178,s:[{v:"43㎡",d:364260000,u:16}],m:"2026.11"},
+  {id:4,  n:"세곡2지구3단지 (래미안포레)", gu:"강남구",  t:"재공급", lat:37.4700,lng:127.0880,s:[{v:"59㎡",d:514020000,u:23},{v:"84㎡",d:655980000,u:7}],m:"예비입주"},
+  {id:5,  n:"세곡2지구4단지 (강남한양수자인)",gu:"강남구",t:"재공급",lat:37.4695,lng:127.0895,s:[{v:"84㎡",d:655980000,u:5}],m:"예비입주"},
+  {id:6,  n:"강동리버스트4단지",           gu:"강동구",  t:"재공급", lat:37.5658,lng:127.1720,s:[{v:"59㎡",d:425100000,u:2}],m:"예비입주"},
+  {id:7,  n:"강동리버스트8단지",           gu:"강동구",  t:"재공급", lat:37.5648,lng:127.1730,s:[{v:"59㎡",d:425100000,u:2}],m:"예비입주"},
+  {id:8,  n:"마곡엠밸리1단지",  gu:"강서구",t:"재공급",lat:37.5598,lng:126.8278,s:[{v:"84㎡",d:599040000,u:1}],m:"예비입주"},
+  {id:9,  n:"마곡엠밸리2단지",  gu:"강서구",t:"재공급",lat:37.5608,lng:126.8290,s:[{v:"59㎡",d:499200000,u:3},{v:"84㎡",d:599040000,u:2}],m:"예비입주"},
+  {id:10, n:"마곡엠밸리3단지",  gu:"강서구",t:"재공급",lat:37.5618,lng:126.8302,s:[{v:"59㎡",d:499200000,u:3},{v:"84㎡",d:599040000,u:2}],m:"예비입주"},
+  {id:11, n:"마곡엠밸리4단지",  gu:"강서구",t:"재공급",lat:37.5588,lng:126.8268,s:[{v:"59㎡",d:499200000,u:1}],m:"예비입주"},
+  {id:12, n:"마곡엠밸리5단지",  gu:"강서구",t:"재공급",lat:37.5578,lng:126.8275,s:[{v:"84㎡",d:599040000,u:1}],m:"예비입주"},
+  {id:13, n:"마곡엠밸리7단지",  gu:"강서구",t:"재공급",lat:37.5628,lng:126.8315,s:[{v:"59㎡",d:499200000,u:3},{v:"84㎡",d:599040000,u:4}],m:"예비입주"},
+  {id:14, n:"마곡엠밸리8단지",  gu:"강서구",t:"재공급",lat:37.5638,lng:126.8298,s:[{v:"59㎡",d:499200000,u:7}],m:"예비입주"},
+  {id:15, n:"마곡엠밸리9단지",  gu:"강서구",t:"재공급",lat:37.5568,lng:126.8260,s:[{v:"59㎡",d:529620000,u:2}],m:"예비입주"},
+  {id:16, n:"마곡엠밸리10단지", gu:"강서구",t:"재공급",lat:37.5648,lng:126.8310,s:[{v:"59㎡",d:499200000,u:11}],m:"예비입주"},
+  {id:17, n:"마곡엠밸리11단지", gu:"강서구",t:"재공급",lat:37.5658,lng:126.8288,s:[{v:"59㎡",d:499200000,u:6}],m:"예비입주"},
+  {id:18, n:"마곡엠밸리12단지", gu:"강서구",t:"재공급",lat:37.5668,lng:126.8278,s:[{v:"59㎡",d:499200000,u:5}],m:"예비입주"},
+  {id:19, n:"마곡엠밸리14단지", gu:"강서구",t:"재공급",lat:37.5558,lng:126.8248,s:[{v:"59㎡",d:499200000,u:8},{v:"84㎡",d:599040000,u:12}],m:"예비입주"},
+  {id:20, n:"마곡엠밸리15단지", gu:"강서구",t:"재공급",lat:37.5548,lng:126.8255,s:[{v:"59㎡",d:499200000,u:6},{v:"84㎡",d:599040000,u:1}],m:"예비입주"},
+  {id:21, n:"중계센트럴파크",   gu:"노원구",t:"재공급",lat:37.6388,lng:127.0735,s:[{v:"49㎡",d:315120000,u:1}],m:"예비입주"},
+  {id:22, n:"서초더샵포레",     gu:"서초구",t:"재공급",lat:37.4648,lng:127.0185,s:[{v:"59㎡",d:570960000,u:7},{v:"84㎡",d:730860000,u:3}],m:"예비입주"},
+  {id:23, n:"서초포레스타3단지", gu:"서초구",t:"재공급",lat:37.4638,lng:127.0172,s:[{v:"59㎡",d:570960000,u:11},{v:"84㎡",d:730860000,u:1}],m:"예비입주"},
+  {id:24, n:"서초포레스타5단지", gu:"서초구",t:"재공급",lat:37.4628,lng:127.0158,s:[{v:"59㎡",d:570960000,u:3}],m:"예비입주"},
+  {id:25, n:"서초포레스타6단지", gu:"서초구",t:"재공급",lat:37.4642,lng:127.0198,s:[{v:"54㎡",d:481260000,u:3}],m:"예비입주"},
+  {id:26, n:"서초포레스타7단지", gu:"서초구",t:"재공급",lat:37.4620,lng:127.0182,s:[{v:"49㎡",d:447720000,u:8},{v:"59㎡",d:570960000,u:2}],m:"예비입주"},
+  {id:27, n:"왕십리 모노퍼스",  gu:"성동구",t:"재공급",lat:37.5612,lng:127.0390,s:[{v:"47㎡",d:262080000,u:1}],m:"예비입주"},
+  {id:28, n:"송파레미니스1단지", gu:"송파구",t:"재공급",lat:37.4985,lng:127.1178,s:[{v:"49㎡",d:381420000,u:1},{v:"59㎡",d:476580000,u:1}],m:"예비입주"},
+  {id:29, n:"래미안그레이튼",    gu:"강남구",t:"매입",lat:37.4812,lng:127.0468,s:[{v:"59㎡",d:826800000,u:2}],m:"예비입주"},
+  {id:30, n:"래미안그레이튼2차", gu:"강남구",t:"매입",lat:37.4818,lng:127.0475,s:[{v:"59㎡",d:826800000,u:2}],m:"예비입주"},
+  {id:31, n:"래미안도곡카운티",  gu:"강남구",t:"매입",lat:37.4870,lng:127.0402,s:[{v:"59㎡",d:858000000,u:1}],m:"예비입주"},
+  {id:32, n:"래미안신사",        gu:"강남구",t:"매입",lat:37.5218,lng:127.0215,s:[{v:"84㎡",d:780000000,u:1}],m:"예비입주"},
+  {id:33, n:"아크로힐스논현",    gu:"강남구",t:"매입",lat:37.5148,lng:127.0338,s:[{v:"56㎡",d:795600000,u:1}],m:"예비입주"},
+  {id:34, n:"역삼자이",          gu:"강남구",t:"매입",lat:37.5008,lng:127.0388,s:[{v:"59㎡",d:881400000,u:3}],m:"예비입주"},
+  {id:35, n:"청담르엘",          gu:"강남구",t:"매입",lat:37.5252,lng:127.0538,s:[{v:"49㎡",d:772980000,u:10}],m:"예비입주"},
+  {id:36, n:"테헤란아이파크",    gu:"강남구",t:"매입",lat:37.5045,lng:127.0512,s:[{v:"59㎡",d:842400000,u:1}],m:"예비입주"},
+  {id:37, n:"e편한세상강동프레스티지원",gu:"강동구",t:"매입",lat:37.5488,lng:127.1232,s:[{v:"44㎡",d:450840000,u:2}],m:"예비입주"},
+  {id:38, n:"강동헤리티지자이",  gu:"강동구",t:"매입",lat:37.5478,lng:127.1248,s:[{v:"59㎡",d:546000000,u:1}],m:"예비입주"},
+  {id:39, n:"고덕아이파크",      gu:"강동구",t:"매입",lat:37.5568,lng:127.1538,s:[{v:"59㎡",d:524160000,u:7}],m:"예비입주"},
+  {id:40, n:"그란츠리버파크",    gu:"강동구",t:"매입",lat:37.5478,lng:127.1218,s:[{v:"44㎡",d:436020000,u:1}],m:"예비입주"},
+  {id:41, n:"더샵강동센트럴시티",gu:"강동구",t:"매입",lat:37.5492,lng:127.1228,s:[{v:"84㎡",d:657540000,u:3}],m:"예비입주"},
+  {id:42, n:"래미안힐스테이트고덕",gu:"강동구",t:"매입",lat:37.5558,lng:127.1528,s:[{v:"59㎡",d:566280000,u:8}],m:"예비입주"},
+  {id:43, n:"올림픽파크포레온",  gu:"강동구",t:"매입",lat:37.5228,lng:127.1248,s:[{v:"49㎡",d:482820000,u:1},{v:"59㎡",d:583440000,u:2}],m:"예비입주"},
+  {id:44, n:"올림픽파크한양수자인",gu:"강동구",t:"매입",lat:37.5215,lng:127.1205,s:[{v:"59㎡",d:528840000,u:1}],m:"예비입주"},
+  {id:45, n:"힐스테이트 강동 리버뷰",gu:"강동구",t:"매입",lat:37.5548,lng:127.1358,s:[{v:"59㎡",d:506220000,u:2},{v:"84㎡",d:625560000,u:1}],m:"예비입주"},
+  {id:46, n:"강서센트레빌4차",   gu:"강서구",t:"매입",lat:37.5498,lng:126.8562,s:[{v:"59㎡",d:363480000,u:2}],m:"예비입주"},
+  {id:47, n:"강서센트레빌",      gu:"강서구",t:"매입",lat:37.5492,lng:126.8555,s:[{v:"59㎡",d:349440000,u:1}],m:"예비입주"},
+  {id:48, n:"강서한강자이",      gu:"강서구",t:"매입",lat:37.5688,lng:126.8572,s:[{v:"59㎡",d:518700000,u:3},{v:"84㎡",d:609960000,u:1}],m:"예비입주"},
+  {id:49, n:"마곡푸르지오",      gu:"강서구",t:"매입",lat:37.5578,lng:126.8348,s:[{v:"84㎡",d:492960000,u:1}],m:"예비입주"},
+  {id:50, n:"마곡힐스테이트",    gu:"강서구",t:"매입",lat:37.5585,lng:126.8358,s:[{v:"59㎡",d:510900000,u:3}],m:"예비입주"},
+  {id:51, n:"래미안프리미어팰리스",gu:"광진구",t:"매입",lat:37.5428,lng:127.0842,s:[{v:"84㎡",d:680940000,u:1}],m:"예비입주"},
+  {id:52, n:"롯데캐슬 이스트폴", gu:"광진구",t:"매입",lat:37.5488,lng:127.0965,s:[{v:"79㎡",d:928200000,u:1}],m:"예비입주"},
+  {id:53, n:"개봉푸르지오",      gu:"구로구",t:"매입",lat:37.4945,lng:126.8578,s:[{v:"59㎡",d:360360000,u:1}],m:"예비입주"},
+  {id:54, n:"고척마젤란",        gu:"구로구",t:"매입",lat:37.5008,lng:126.8678,s:[{v:"66㎡",d:337740000,u:1},{v:"84㎡",d:395460000,u:1}],m:"예비입주"},
+  {id:55, n:"구로경남아너스빌",  gu:"구로구",t:"매입",lat:37.4935,lng:126.8872,s:[{v:"65㎡",d:310440000,u:1}],m:"예비입주"},
+  {id:56, n:"신영지웰에스테이트개봉역",gu:"구로구",t:"매입",lat:37.4958,lng:126.8562,s:[{v:"59㎡",d:382980000,u:1}],m:"예비입주"},
+  {id:57, n:"온수힐스테이트",    gu:"구로구",t:"매입",lat:37.4982,lng:126.8482,s:[{v:"59㎡",d:328380000,u:1}],m:"예비입주"},
+  {id:58, n:"천왕역 모아엘가 트레뷰",gu:"구로구",t:"매입",lat:37.4978,lng:126.8435,s:[{v:"44㎡",d:277680000,u:12}],m:"예비입주"},
+  {id:59, n:"금천롯데캐슬골드파크1차",gu:"금천구",t:"매입",lat:37.4558,lng:126.8972,s:[{v:"59㎡",d:457860000,u:1},{v:"71㎡",d:487500000,u:1}],m:"예비입주"},
+  {id:60, n:"중계한화꿈에그린더퍼스트",gu:"노원구",t:"매입",lat:37.6358,lng:127.0728,s:[{v:"59㎡",d:324480000,u:1}],m:"예비입주"},
+  {id:61, n:"이문 아이파크 자이", gu:"동대문구",t:"매입",lat:37.5908,lng:127.0648,s:[{v:"41㎡",d:322140000,u:2},{v:"59㎡",d:464100000,u:11}],m:"예비입주"},
+  {id:62, n:"청계한신휴플러스",  gu:"동대문구",t:"매입",lat:37.5748,lng:127.0318,s:[{v:"59㎡",d:469560000,u:2}],m:"예비입주"},
+  {id:63, n:"힐스테이트 청량리 메트로블",gu:"동대문구",t:"매입",lat:37.5808,lng:127.0468,s:[{v:"44㎡",d:372060000,u:3},{v:"48㎡",d:388440000,u:1}],m:"예비입주"},
+  {id:64, n:"남성두산위브트레지움",gu:"동작구",t:"매입",lat:37.4978,lng:126.9578,s:[{v:"59㎡",d:563940000,u:1}],m:"예비입주"},
+  {id:65, n:"상도효성해링턴플레이스",gu:"동작구",t:"매입",lat:37.5008,lng:126.9448,s:[{v:"59㎡",d:500760000,u:1}],m:"예비입주"},
+  {id:66, n:"상도2차두산위브트레지움",gu:"동작구",t:"매입",lat:37.5002,lng:126.9458,s:[{v:"59㎡",d:519480000,u:2},{v:"84㎡",d:625560000,u:2}],m:"예비입주"},
+  {id:67, n:"공덕SK리더스뷰 1단지",gu:"마포구",t:"매입",lat:37.5445,lng:126.9512,s:[{v:"84㎡",d:928200000,u:1}],m:"예비입주"},
+  {id:68, n:"공덕SK리더스뷰 2단지",gu:"마포구",t:"매입",lat:37.5452,lng:126.9518,s:[{v:"84㎡",d:928200000,u:2}],m:"예비입주"},
+  {id:69, n:"홍제금호어울림",    gu:"서대문구",t:"매입",lat:37.5918,lng:126.9415,s:[{v:"59㎡",d:365040000,u:1}],m:"예비입주"},
+  {id:70, n:"두산위브트레지움",  gu:"서초구",t:"매입",lat:37.5028,lng:127.0068,s:[{v:"84㎡",d:897000000,u:1}],m:"예비입주"},
+  {id:71, n:"래미안서초에스티지", gu:"서초구",t:"매입",lat:37.4878,lng:127.0348,s:[{v:"59㎡",d:858000000,u:1}],m:"예비입주"},
+  {id:72, n:"메이플자이",        gu:"서초구",t:"매입",lat:37.5038,lng:127.0092,s:[{v:"43㎡",d:699660000,u:3},{v:"49㎡",d:834600000,u:3}],m:"예비입주"},
+  {id:73, n:"반포리체",          gu:"서초구",t:"매입",lat:37.5098,lng:127.0058,s:[{v:"59㎡",d:904800000,u:1}],m:"예비입주"},
+  {id:74, n:"반포자이",          gu:"서초구",t:"매입",lat:37.5088,lng:127.0065,s:[{v:"59㎡",d:959400000,u:12}],m:"예비입주"},
+  {id:75, n:"서초교대이편한세상", gu:"서초구",t:"매입",lat:37.4928,lng:127.0142,s:[{v:"59㎡",d:850200000,u:3}],m:"예비입주"},
+  {id:76, n:"서울숲아이파크",    gu:"성동구",t:"매입",lat:37.5448,lng:127.0412,s:[{v:"84㎡",d:512460000,u:1}],m:"예비입주"},
+  {id:77, n:"래미안길음센터피스", gu:"성북구",t:"매입",lat:37.6028,lng:127.0278,s:[{v:"73㎡",d:569400000,u:1},{v:"84㎡",d:638040000,u:1}],m:"예비입주"},
+  {id:78, n:"잠실래미안아이파크", gu:"송파구",t:"매입",lat:37.5115,lng:127.0992,s:[{v:"43㎡",d:528060000,u:6},{v:"59㎡",d:749580000,u:1}],m:"예비입주"},
+  {id:79, n:"잠실르엘",          gu:"송파구",t:"매입",lat:37.5095,lng:127.0905,s:[{v:"45㎡",d:620880000,u:1},{v:"51㎡",d:703560000,u:1}],m:"예비입주"},
+  {id:80, n:"동원데자뷰",        gu:"양천구",t:"매입",lat:37.5168,lng:126.8628,s:[{v:"59㎡",d:293280000,u:1}],m:"예비입주"},
+  {id:81, n:"목동센트럴푸르지오", gu:"양천구",t:"매입",lat:37.5278,lng:126.8748,s:[{v:"57㎡",d:607620000,u:1}],m:"예비입주"},
+  {id:82, n:"문래동모아미래도",   gu:"영등포구",t:"매입",lat:37.5195,lng:126.8978,s:[{v:"59㎡",d:434460000,u:1}],m:"예비입주"},
+  {id:83, n:"신길 AK 푸르지오",  gu:"영등포구",t:"매입",lat:37.5068,lng:126.9185,s:[{v:"49㎡",d:398580000,u:1}],m:"예비입주"},
+  {id:84, n:"e편한세상화랑대",    gu:"중랑구",t:"매입",lat:37.6148,lng:127.0882,s:[{v:"59㎡",d:419640000,u:1}],m:"예비입주"},
+  {id:85, n:"리버센 SK뷰 롯데캐슬",gu:"중랑구",t:"매입",lat:37.5988,lng:127.0918,s:[{v:"70㎡",d:492180000,u:2},{v:"84㎡",d:563940000,u:2}],m:"예비입주"},
+];
+
+const md=h=>h.s[Math.floor(h.s.length/2)].d;
+const tu=h=>h.s.reduce((a,s)=>a+s.u,0);
+
+/* ══════════════════════════════════
+   Leaflet 초기화
+══════════════════════════════════ */
+const map=L.map('map',{center:[37.555,126.995],zoom:12,zoomControl:true});
+let curTile=null;
+
+function setTile(id){
+  const t=TILES.find(x=>x.id===id);
+  if(!t) return;
+  if(curTile) map.removeLayer(curTile);
+  curTile=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,subdomains:t.sub||'abc'}).addTo(map);
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('active',b.dataset.tile===id));
+}
+
+// 타일 버튼 생성
+const tg=document.getElementById('tileGroup');
+TILES.forEach(t=>{
+  const b=document.createElement('button');
+  b.className='tbtn'+(t.id==='voyager'?' active':'');
+  b.dataset.tile=t.id;
+  b.innerHTML=`<span class="ti">${t.icon}</span>${t.label}`;
+  b.addEventListener('click',()=>setTile(t.id));
+  tg.appendChild(b);
+});
+setTile('voyager');
+
+/* ══════════════════════════════════
+   호버 툴팁 (지도 영역 위)
+══════════════════════════════════ */
+const tipEl=document.getElementById('mapTip');
+const mapDiv=document.getElementById('map');
+
+function showTip(h,e){
+  const dep=md(h), c=col(dep);
+  const sl=h.s.map(x=>`${x.v} ${x.u}세대`).join('  ·  ');
+  const badgeColor={신규:'#166534',재공급:'#1d4ed8',매입:'#7c3aed'}[h.t]||'#374151';
+  tipEl.innerHTML=`
+    <div class="tt-name">
+      ${h.n}
+      <span class="tt-badge" style="background:${badgeColor}18;color:${badgeColor}">${h.t}</span>
+    </div>
+    <div class="tt-row"><span class="tl">자치구</span><span class="tv">${h.gu}</span></div>
+    <div class="tt-row"><span class="tl">대표 보증금</span><span class="tv" style="color:${c.hex}">${f억(dep)}</span></div>
+    <div class="tt-row"><span class="tl">예상 월 이자</span><span class="tv" data-d="${dep}">${fI(dep,R)}</span></div>
+    <div class="tt-row"><span class="tl">공급 세대</span><span class="tv">${tu(h)}세대</span></div>
+    <div class="tt-row" style="margin-top:2px"><span class="tl">입주</span><span class="tv">${h.m}</span></div>
+  `;
+  moveTip(e);
+  tipEl.classList.add('show');
+}
+function moveTip(e){
+  const r=mapDiv.getBoundingClientRect();
+  let x=e.clientX-r.left+16, y=e.clientY-r.top-16;
+  const tw=260, th=180;
+  if(x+tw>r.width) x=e.clientX-r.left-tw-10;
+  if(y+th>r.height) y=e.clientY-r.top-th-10;
+  tipEl.style.left=x+'px'; tipEl.style.top=y+'px';
+}
+function hideTip(){ tipEl.classList.remove('show'); }
+
+/* ══════════════════════════════════
+   마커 & 팝업
+══════════════════════════════════ */
+let activeId=null;
+const lMk={};
+
+H.forEach(h=>{
+  const dep=md(h), c=col(dep);
+  const sl=h.s.map(x=>`${x.v} ${x.u}세대`).join(' · ');
+  const badgeColor={신규:'#166534',재공급:'#1d4ed8',매입:'#7c3aed'}[h.t]||'#374151';
+  const badgeBg={신규:'#dcfce7',재공급:'#dbeafe',매입:'#ede9fe'}[h.t]||'#f3f4f6';
+
+  // 집 실루엣 SVG 아이콘
+  const icon=L.divIcon({
+    className:'',
+    html:`<div class="mk-wrap" data-id="${h.id}">
+            <div class="mk-house">
+              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <!-- 집 실루엣: 지붕 + 벽 + 문 -->
+                <polygon points="16,2 30,14 26,14 26,30 20,30 20,20 12,20 12,30 6,30 6,14 2,14"
+                         fill="${c.hex}" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>`,
+    iconSize:[32,32],
+    iconAnchor:[16,28],
+    popupAnchor:[0,-28],
+  });
+
+  const mk=L.marker([h.lat,h.lng],{icon}).addTo(map);
+
+  // 팝업 HTML
+  const buildPu=()=>`
+    <div class="pu">
+      <div class="pu-head">
+        <div class="pu-name">${h.n}</div>
+        <div class="pu-sub">
+          ${h.gu}
+          <span class="pu-tag" style="background:${badgeBg};color:${badgeColor}">${h.t}</span>
+        </div>
+      </div>
+      <div class="pu-body">
+        <div class="pu-row">
+          <span class="pl">대표 보증금</span>
+          <span class="pv" style="color:${c.hex}">${f억(dep)}</span>
+        </div>
+        <div class="pu-row">
+          <span class="pl">예상 월 이자</span>
+          <span class="pv interest" data-d="${dep}">${fI(dep,R)}</span>
+        </div>
+        <div class="pu-row">
+          <span class="pl">공급 세대</span>
+          <span class="pv" style="font-size:12px">${tu(h)}세대</span>
+        </div>
+        <div class="pu-row">
+          <span class="pl">입주</span>
+          <span class="pv" style="font-size:12px">${h.m}</span>
+        </div>
+        <div class="pu-sizes">${sl}</div>
+      </div>
+    </div>`;
+
+  mk.bindPopup(buildPu(),{maxWidth:300,autoPan:true,className:''});
+
+  // 마커 DOM 참조 (이벤트 위임)
+  mk.on('add',()=>{
+    const el=document.querySelector(`.mk-wrap[data-id="${h.id}"]`);
+    if(!el) return;
+    el.addEventListener('mouseenter',e=>showTip(h,e));
+    el.addEventListener('mouseleave',hideTip);
+    el.addEventListener('mousemove',moveTip);
+  });
+
+  mk.on('click',()=>{ sel(h.id,'map'); });
+  mk.on('popupclose',()=>{
+    clearSel();
+  });
+
+  lMk[h.id]=mk;
+});
+
+// 지도 마우스 이동 시 툴팁도 이동
+mapDiv.addEventListener('mousemove',e=>{
+  if(tipEl.classList.contains('show')) moveTip(e);
+});
+
+/* ══════════════════════════════════
+   선택 로직
+══════════════════════════════════ */
+function clearSel(){
+  activeId=null;
+  document.querySelectorAll('.mk-wrap').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+}
+
+function sel(id,from){
+  activeId=id;
+  document.querySelectorAll('.mk-wrap').forEach(e=>{
+    e.classList.toggle('active',+e.dataset.id===id);
+  });
+  // 카드 강조
+  document.querySelectorAll('.card').forEach(c=>{
+    const on=+c.dataset.id===id;
+    c.classList.toggle('active',on);
+    if(on && from==='map'){
+      c.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    if(on && from==='card'){
+      const h=H.find(x=>x.id===id);
+      if(h){
+        map.setView([h.lat,h.lng],15,{animate:true});
+        setTimeout(()=>{
+          lMk[id].openPopup();
+          // 팝업 열린 후 마커 강조 유지
+          document.querySelectorAll('.mk-wrap').forEach(e=>{
+            e.classList.toggle('active',+e.dataset.id===id);
+          });
+        },350);
+      }
+    }
+  });
+}
+
+map.on('click',()=>{ hideTip(); clearSel(); });
+
+/* ══════════════════════════════════
+   필터 / 정렬 상태
+══════════════════════════════════ */
+let fType='all', fPrice='all', fSearch='', fSort='default';
+
+// 보증금 → 가격대 코드
+function priceTag(d){
+  if(d<3e8)  return '0-3';
+  if(d<5e8)  return '3-5';
+  if(d<7e8)  return '5-7';
+  if(d<10e8) return '7-10';
+  return '10-';
+}
+
+// 필터 + 정렬 적용 후 배열 반환
+function getFiltered(){
+  let list=[...H];
+
+  // 검색
+  if(fSearch){
+    const q=fSearch.toLowerCase();
+    list=list.filter(h=>h.n.toLowerCase().includes(q)||h.gu.includes(q));
+  }
+  // 유형
+  if(fType!=='all') list=list.filter(h=>h.t===fType);
+  // 보증금 범위
+  if(fPrice!=='all') list=list.filter(h=>priceTag(md(h))===fPrice);
+
+  // 정렬
+  list.sort((a,b)=>{
+    if(fSort==='dep-asc')   return md(a)-md(b);
+    if(fSort==='dep-desc')  return md(b)-md(a);
+    if(fSort==='int-asc')   return md(a)-md(b);
+    if(fSort==='int-desc')  return md(b)-md(a);
+    if(fSort==='gu')        return a.gu.localeCompare(b.gu,'ko');
+    if(fSort==='units-desc')return tu(b)-tu(a);
+    return a.id-b.id; // default
+  });
+  return list;
+}
+
+/* ══════════════════════════════════
+   카드 렌더 (필터 적용)
+══════════════════════════════════ */
+function renderCards(){
+  const cl=document.getElementById('cl');
+  const cnt=document.getElementById('cnt');
+  const list=getFiltered();
+  const totalUnits=list.reduce((a,h)=>a+tu(h),0);
+
+  // 카운트 업데이트
+  if(fType==='all'&&fPrice==='all'&&!fSearch&&fSort==='default'){
+    cnt.textContent=`${H.length}개 단지 · ${H.reduce((a,h)=>a+tu(h),0)}세대`;
+  } else {
+    cnt.textContent=`${list.length}개 단지 · ${totalUnits}세대 (필터됨)`;
+  }
+
+  cl.innerHTML='';
+
+  if(list.length===0){
+    cl.innerHTML=`<div class="empty-state">
+      <span class="es-icon">🏠</span>
+      조건에 맞는 단지가 없습니다.<br>
+      <span style="font-size:11px">필터를 변경해보세요</span>
+    </div>`;
+    return;
+  }
+
+  list.forEach(h=>{
+    const dep=md(h), c=col(dep);
+    const badgeColor={신규:'#166534',재공급:'#1d4ed8',매입:'#7c3aed'}[h.t]||'#374151';
+    const badgeBg={신규:'#dcfce7',재공급:'#dbeafe',매입:'#ede9fe'}[h.t]||'#f3f4f6';
+
+    const card=document.createElement('div');
+    card.className='card';
+    card.dataset.id=h.id;
+    card.style.setProperty('--cc',c.hex);
+
+    card.innerHTML=`
+      <div class="card-header">
+        <div>
+          <div class="card-name">${h.n}</div>
+          <div class="card-gu">${h.gu}</div>
+        </div>
+        <span class="card-badge" style="background:${badgeBg};color:${badgeColor};border-color:${badgeColor}30">${h.t}</span>
+      </div>
+      <div class="card-amounts">
+        <div class="amount-block">
+          <div class="amt-label">보증금</div>
+          <div class="amt-val dep">${f억(dep)}</div>
+        </div>
+        <div class="amount-block">
+          <div class="amt-label">예상 월 이자</div>
+          <div class="amt-val int" data-d="${dep}">${fI(dep,R)}</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="card-sizes">${h.s.map(x=>`${x.v} ${x.u}세대`).join(' · ')}</span>
+        <span class="card-movein">${h.m}</span>
+      </div>`;
+
+    card.addEventListener('click',()=>sel(h.id,'card'));
+    cl.appendChild(card);
+  });
+}
+
+/* ══════════════════════════════════
+   필터 이벤트 바인딩
+══════════════════════════════════ */
+// 검색
+const searchEl=document.getElementById('searchInput');
+const clearEl=document.getElementById('searchClear');
+searchEl.addEventListener('input',e=>{
+  fSearch=e.target.value.trim();
+  clearEl.style.display=fSearch?'block':'none';
+  renderCards();
+});
+clearEl.addEventListener('click',()=>{
+  fSearch=''; searchEl.value=''; clearEl.style.display='none';
+  renderCards();
+});
+
+// 유형 칩
+document.getElementById('typeFilter').addEventListener('click',e=>{
+  const btn=e.target.closest('.fchip');
+  if(!btn) return;
+  fType=btn.dataset.val;
+  document.querySelectorAll('#typeFilter .fchip').forEach(b=>b.classList.toggle('active',b===btn));
+  renderCards();
+});
+
+// 보증금 칩
+document.getElementById('priceFilter').addEventListener('click',e=>{
+  const btn=e.target.closest('.fchip');
+  if(!btn) return;
+  fPrice=btn.dataset.val;
+  document.querySelectorAll('#priceFilter .fchip').forEach(b=>b.classList.toggle('active',b===btn));
+  renderCards();
+});
+
+// 정렬
+document.getElementById('sortSelect').addEventListener('change',e=>{
+  fSort=e.target.value;
+  renderCards();
+});
+
+// 초기화
+document.getElementById('filterReset').addEventListener('click',()=>{
+  fType='all'; fPrice='all'; fSearch=''; fSort='default';
+  searchEl.value=''; clearEl.style.display='none';
+  document.getElementById('sortSelect').value='default';
+  document.querySelectorAll('#typeFilter .fchip').forEach(b=>b.classList.toggle('active',b.dataset.val==='all'));
+  document.querySelectorAll('#priceFilter .fchip').forEach(b=>b.classList.toggle('active',b.dataset.val==='all'));
+  renderCards();
+});
+
+// 초기 렌더
+renderCards();
+</script>
+</body>
+</html>
